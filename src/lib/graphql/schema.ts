@@ -1,8 +1,18 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gte, isNull } from "drizzle-orm";
 import { createSchema } from "graphql-yoga";
 import { encryptProviderKey, getKeyHint } from "../crypto/keys";
-import { db, providerKeys, subscriptions, userPreferences, users } from "../db";
+import { computeContentHash } from "../crypto/hash";
+import {
+  db,
+  memories,
+  providerKeys,
+  subscriptions,
+  syncCursors,
+  userPreferences,
+  users,
+} from "../db";
 import type { GraphQLContext } from "./context";
+import type { Memory } from "../db/schema";
 
 const typeDefs = /* GraphQL */ `
   type Query {
@@ -10,6 +20,8 @@ const typeDefs = /* GraphQL */ `
     myProviders: [ProviderKey!]!
     mySubscription: Subscription
     myPreferences: UserPreferences
+    myMemories(category: String, limit: Int): [Memory!]!
+    memoriesSince(since: String!, deviceId: String!): MemorySyncPayload!
   }
 
   type Mutation {
@@ -17,6 +29,9 @@ const typeDefs = /* GraphQL */ `
     deleteProviderKey(provider: Provider!): Boolean!
     updatePreferences(input: UpdatePreferencesInput!): UserPreferences!
     createGatewaySession: GatewaySession!
+    pushMemories(input: [PushMemoryInput!]!): PushMemoriesResult!
+    deleteMemory(gatewayMemoryId: String!): Boolean!
+    updateMemory(gatewayMemoryId: String!, pinned: Boolean): Memory!
   }
 
   type User {
@@ -78,7 +93,69 @@ const typeDefs = /* GraphQL */ `
     websocketUrl: String!
     expiresAt: String!
   }
+
+  type Memory {
+    id: ID!
+    gatewayMemoryId: String!
+    category: String!
+    content: String!
+    contentHash: String!
+    tags: String!
+    pinned: Boolean!
+    accessCount: Int!
+    sourceSessionId: String
+    sourceChannel: String
+    originDeviceId: String
+    createdAt: String!
+    updatedAt: String!
+    deletedAt: String
+  }
+
+  type MemorySyncPayload {
+    memories: [Memory!]!
+    cursor: String!
+    hasMore: Boolean!
+  }
+
+  input PushMemoryInput {
+    gatewayMemoryId: String!
+    category: String!
+    content: String!
+    tags: String
+    pinned: Boolean
+    accessCount: Int
+    sourceSessionId: String
+    sourceChannel: String
+    originDeviceId: String
+    createdAt: String!
+    updatedAt: String!
+    deletedAt: String
+  }
+
+  type PushMemoriesResult {
+    pushed: Int!
+    updated: Int!
+    duplicates: Int!
+  }
 `;
+
+// Sync page size for delta queries
+const SYNC_PAGE_SIZE = 100;
+
+type PushMemoryInput = {
+  gatewayMemoryId: string;
+  category: string;
+  content: string;
+  tags?: string;
+  pinned?: boolean;
+  accessCount?: number;
+  sourceSessionId?: string;
+  sourceChannel?: string;
+  originDeviceId?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+};
 
 const resolvers = {
   Query: {
@@ -115,6 +192,96 @@ const resolvers = {
         .from(userPreferences)
         .where(eq(userPreferences.userId, ctx.userId));
       return prefs;
+    },
+
+    myMemories: async (
+      _: unknown,
+      { category, limit }: { category?: string; limit?: number },
+      ctx: GraphQLContext,
+    ) => {
+      if (!ctx.userId) return [];
+
+      const conditions = [
+        eq(memories.userId, ctx.userId),
+        isNull(memories.deletedAt),
+      ];
+
+      if (category) {
+        conditions.push(eq(memories.category, category));
+      }
+
+      const query = db
+        .select()
+        .from(memories)
+        .where(and(...conditions))
+        .orderBy(memories.updatedAt);
+
+      if (limit && limit > 0) {
+        query.limit(limit);
+      }
+
+      return query;
+    },
+
+    memoriesSince: async (
+      _: unknown,
+      { since, deviceId }: { since: string; deviceId: string },
+      ctx: GraphQLContext,
+    ) => {
+      if (!ctx.userId) throw new Error("Unauthorized");
+
+      const sinceDate = new Date(since);
+
+      // Fetch memories updated since the given timestamp (include tombstones)
+      const results = await db
+        .select()
+        .from(memories)
+        .where(
+          and(
+            eq(memories.userId, ctx.userId),
+            gte(memories.updatedAt, sinceDate),
+          ),
+        )
+        .orderBy(memories.updatedAt)
+        .limit(SYNC_PAGE_SIZE + 1);
+
+      const hasMore = results.length > SYNC_PAGE_SIZE;
+      const page = hasMore ? results.slice(0, SYNC_PAGE_SIZE) : results;
+
+      // Determine cursor from last item in page
+      const cursor =
+        page.length > 0
+          ? page[page.length - 1].updatedAt.toISOString()
+          : since;
+
+      // Update sync cursor for this device
+      const [existingCursor] = await db
+        .select()
+        .from(syncCursors)
+        .where(
+          and(
+            eq(syncCursors.userId, ctx.userId),
+            eq(syncCursors.deviceId, deviceId),
+          ),
+        );
+
+      if (existingCursor) {
+        await db
+          .update(syncCursors)
+          .set({ lastSyncedAt: new Date() })
+          .where(eq(syncCursors.id, existingCursor.id));
+      } else {
+        await db.insert(syncCursors).values({
+          userId: ctx.userId,
+          deviceId,
+        });
+      }
+
+      return {
+        memories: page,
+        cursor,
+        hasMore,
+      };
     },
   },
 
@@ -246,6 +413,167 @@ const resolvers = {
         expiresAt: expiresAt.toISOString(),
       };
     },
+
+    pushMemories: async (
+      _: unknown,
+      { input }: { input: PushMemoryInput[] },
+      ctx: GraphQLContext,
+    ) => {
+      if (!ctx.userId) throw new Error("Unauthorized");
+
+      let pushed = 0;
+      let updated = 0;
+      let duplicates = 0;
+
+      for (const item of input) {
+        const contentHash = await computeContentHash(item.content);
+
+        // Check for existing memory by user + content hash
+        const [existing] = await db
+          .select()
+          .from(memories)
+          .where(
+            and(
+              eq(memories.userId, ctx.userId),
+              eq(memories.contentHash, contentHash),
+            ),
+          );
+
+        if (existing) {
+          const incomingUpdatedAt = new Date(item.updatedAt);
+          const existingUpdatedAt = existing.updatedAt;
+
+          // LWW: only update if incoming is newer
+          if (incomingUpdatedAt > existingUpdatedAt) {
+            await db
+              .update(memories)
+              .set({
+                gatewayMemoryId: item.gatewayMemoryId,
+                category: item.category,
+                content: item.content,
+                tags: item.tags ?? existing.tags,
+                pinned: item.pinned ?? existing.pinned,
+                // Take max of access counts
+                accessCount: Math.max(
+                  item.accessCount ?? 0,
+                  existing.accessCount,
+                ),
+                sourceSessionId: item.sourceSessionId ?? existing.sourceSessionId,
+                sourceChannel: item.sourceChannel ?? existing.sourceChannel,
+                originDeviceId: item.originDeviceId ?? existing.originDeviceId,
+                updatedAt: incomingUpdatedAt,
+                deletedAt: item.deletedAt ? new Date(item.deletedAt) : existing.deletedAt,
+              })
+              .where(eq(memories.id, existing.id));
+            updated++;
+          } else {
+            // Still merge access_count using max
+            const maxAccess = Math.max(
+              item.accessCount ?? 0,
+              existing.accessCount,
+            );
+            if (maxAccess > existing.accessCount) {
+              await db
+                .update(memories)
+                .set({ accessCount: maxAccess })
+                .where(eq(memories.id, existing.id));
+            }
+            duplicates++;
+          }
+        } else {
+          // Insert new memory
+          await db.insert(memories).values({
+            gatewayMemoryId: item.gatewayMemoryId,
+            userId: ctx.userId,
+            category: item.category,
+            content: item.content,
+            contentHash,
+            tags: item.tags ?? "[]",
+            pinned: item.pinned ?? false,
+            accessCount: item.accessCount ?? 0,
+            sourceSessionId: item.sourceSessionId,
+            sourceChannel: item.sourceChannel,
+            originDeviceId: item.originDeviceId,
+            createdAt: new Date(item.createdAt),
+            updatedAt: new Date(item.updatedAt),
+            deletedAt: item.deletedAt ? new Date(item.deletedAt) : null,
+          });
+          pushed++;
+        }
+      }
+
+      return { pushed, updated, duplicates };
+    },
+
+    deleteMemory: async (
+      _: unknown,
+      { gatewayMemoryId }: { gatewayMemoryId: string },
+      ctx: GraphQLContext,
+    ) => {
+      if (!ctx.userId) throw new Error("Unauthorized");
+
+      const [existing] = await db
+        .select()
+        .from(memories)
+        .where(
+          and(
+            eq(memories.userId, ctx.userId),
+            eq(memories.gatewayMemoryId, gatewayMemoryId),
+          ),
+        );
+
+      if (!existing) return false;
+
+      // Soft delete
+      await db
+        .update(memories)
+        .set({
+          deletedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(memories.id, existing.id));
+
+      return true;
+    },
+
+    updateMemory: async (
+      _: unknown,
+      {
+        gatewayMemoryId,
+        pinned,
+      }: { gatewayMemoryId: string; pinned?: boolean },
+      ctx: GraphQLContext,
+    ) => {
+      if (!ctx.userId) throw new Error("Unauthorized");
+
+      const [existing] = await db
+        .select()
+        .from(memories)
+        .where(
+          and(
+            eq(memories.userId, ctx.userId),
+            eq(memories.gatewayMemoryId, gatewayMemoryId),
+          ),
+        );
+
+      if (!existing) throw new Error("Memory not found");
+
+      const updates: Record<string, unknown> = {
+        updatedAt: new Date(),
+      };
+
+      if (pinned !== undefined) {
+        updates.pinned = pinned;
+      }
+
+      const [updated] = await db
+        .update(memories)
+        .set(updates)
+        .where(eq(memories.id, existing.id))
+        .returning();
+
+      return updated;
+    },
   },
 
   ProviderKey: {
@@ -261,6 +589,12 @@ const resolvers = {
     plan: (sub: { plan: string }) => sub.plan.toUpperCase(),
     status: (sub: { status: string }) =>
       sub.status.toUpperCase().replace("-", "_"),
+  },
+
+  Memory: {
+    createdAt: (mem: Memory) => mem.createdAt.toISOString(),
+    updatedAt: (mem: Memory) => mem.updatedAt.toISOString(),
+    deletedAt: (mem: Memory) => mem.deletedAt?.toISOString() ?? null,
   },
 };
 
