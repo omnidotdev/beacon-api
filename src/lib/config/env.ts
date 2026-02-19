@@ -12,9 +12,6 @@ export const env = {
   authBaseUrl: process.env.AUTH_BASE_URL || "https://identity.omni.dev",
   authSecret: process.env.AUTH_SECRET!,
 
-  // Encryption
-  encryptionKey: process.env.ENCRYPTION_KEY!,
-
   // Gateway
   gatewayUrl: process.env.GATEWAY_URL || "http://localhost:18790",
   gatewaySecret: process.env.GATEWAY_SECRET!,
@@ -36,7 +33,6 @@ export function validateEnv() {
   const required = [
     "DATABASE_URL",
     "AUTH_SECRET",
-    "ENCRYPTION_KEY",
     "GATEWAY_SECRET",
   ];
   const missing = required.filter((key) => !process.env[key]);
