@@ -1,11 +1,9 @@
 import { and, eq, gte, isNull } from "drizzle-orm";
 import { createSchema } from "graphql-yoga";
-import { encryptProviderKey, getKeyHint } from "../crypto/keys";
 import { computeContentHash } from "../crypto/hash";
 import {
   db,
   memories,
-  providerKeys,
   subscriptions,
   syncCursors,
   userPreferences,
@@ -17,7 +15,6 @@ import type { Memory } from "../db/schema";
 const typeDefs = /* GraphQL */ `
   type Query {
     me: User
-    myProviders: [ProviderKey!]!
     mySubscription: Subscription
     myPreferences: UserPreferences
     myMemories(category: String, limit: Int): [Memory!]!
@@ -25,8 +22,6 @@ const typeDefs = /* GraphQL */ `
   }
 
   type Mutation {
-    setProviderKey(provider: Provider!, apiKey: String!, modelPreference: String): ProviderKey!
-    deleteProviderKey(provider: Provider!): Boolean!
     updatePreferences(input: UpdatePreferencesInput!): UserPreferences!
     createGatewaySession: GatewaySession!
     pushMemories(input: [PushMemoryInput!]!): PushMemoriesResult!
@@ -40,20 +35,6 @@ const typeDefs = /* GraphQL */ `
     name: String
     avatarUrl: String
     createdAt: String!
-  }
-
-  type ProviderKey {
-    id: ID!
-    provider: Provider!
-    keyHint: String
-    modelPreference: String
-    createdAt: String!
-  }
-
-  enum Provider {
-    OPENAI
-    ANTHROPIC
-    OPENROUTER
   }
 
   type Subscription {
@@ -168,14 +149,6 @@ const resolvers = {
       return user;
     },
 
-    myProviders: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
-      if (!ctx.userId) return [];
-      return db
-        .select()
-        .from(providerKeys)
-        .where(eq(providerKeys.userId, ctx.userId));
-    },
-
     mySubscription: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
       if (!ctx.userId) return null;
       const [sub] = await db
@@ -286,71 +259,6 @@ const resolvers = {
   },
 
   Mutation: {
-    setProviderKey: async (
-      _: unknown,
-      {
-        provider,
-        apiKey,
-        modelPreference,
-      }: { provider: string; apiKey: string; modelPreference?: string },
-      ctx: GraphQLContext,
-    ) => {
-      if (!ctx.userId) throw new Error("Unauthorized");
-
-      const encrypted = await encryptProviderKey(apiKey);
-      const hint = getKeyHint(apiKey);
-      const providerLower = provider.toLowerCase();
-
-      // Upsert provider key
-      const [existing] = await db
-        .select()
-        .from(providerKeys)
-        .where(eq(providerKeys.userId, ctx.userId))
-        .where(eq(providerKeys.provider, providerLower));
-
-      if (existing) {
-        const [updated] = await db
-          .update(providerKeys)
-          .set({
-            encryptedKey: encrypted,
-            keyHint: hint,
-            modelPreference,
-            updatedAt: new Date(),
-          })
-          .where(eq(providerKeys.id, existing.id))
-          .returning();
-        return updated;
-      }
-
-      const [created] = await db
-        .insert(providerKeys)
-        .values({
-          userId: ctx.userId,
-          provider: providerLower,
-          encryptedKey: encrypted,
-          keyHint: hint,
-          modelPreference,
-        })
-        .returning();
-
-      return created;
-    },
-
-    deleteProviderKey: async (
-      _: unknown,
-      { provider }: { provider: string },
-      ctx: GraphQLContext,
-    ) => {
-      if (!ctx.userId) throw new Error("Unauthorized");
-
-      await db
-        .delete(providerKeys)
-        .where(eq(providerKeys.userId, ctx.userId))
-        .where(eq(providerKeys.provider, provider.toLowerCase()));
-
-      return true;
-    },
-
     updatePreferences: async (
       _: unknown,
       {
@@ -574,11 +482,6 @@ const resolvers = {
 
       return updated;
     },
-  },
-
-  ProviderKey: {
-    provider: (key: { provider: string }) => key.provider.toUpperCase(),
-    createdAt: (key: { createdAt: Date }) => key.createdAt?.toISOString(),
   },
 
   User: {

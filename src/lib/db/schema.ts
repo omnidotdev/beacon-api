@@ -18,25 +18,6 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
-export const providerKeys = pgTable(
-  "provider_keys",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
-      .references(() => users.id, { onDelete: "cascade" })
-      .notNull(),
-    provider: text("provider").notNull(), // 'openai', 'anthropic', 'openrouter'
-    encryptedKey: text("encrypted_key").notNull(),
-    keyHint: text("key_hint"), // Last 4 chars
-    modelPreference: text("model_preference"),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-  },
-  (table) => [
-    unique("provider_keys_user_provider").on(table.userId, table.provider),
-  ],
-);
-
 export const subscriptions = pgTable("subscriptions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
@@ -116,8 +97,6 @@ export const syncCursors = pgTable(
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
-export type ProviderKey = typeof providerKeys.$inferSelect;
-export type NewProviderKey = typeof providerKeys.$inferInsert;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type UserPreference = typeof userPreferences.$inferSelect;
 export type Memory = typeof memories.$inferSelect;
