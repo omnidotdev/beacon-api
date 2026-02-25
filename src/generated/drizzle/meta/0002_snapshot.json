@@ -111,12 +111,8 @@
           "name": "memories_user_id_users_id_fk",
           "tableFrom": "memories",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -126,10 +122,7 @@
         "memories_user_content_hash": {
           "name": "memories_user_content_hash",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id",
-            "content_hash"
-          ]
+          "columns": ["user_id", "content_hash"]
         }
       },
       "policies": {},
@@ -201,12 +194,8 @@
           "name": "subscriptions_user_id_users_id_fk",
           "tableFrom": "subscriptions",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -216,9 +205,7 @@
         "subscriptions_aether_subscription_id_unique": {
           "name": "subscriptions_aether_subscription_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "aether_subscription_id"
-          ]
+          "columns": ["aether_subscription_id"]
         }
       },
       "policies": {},
@@ -262,12 +249,8 @@
           "name": "sync_cursors_user_id_users_id_fk",
           "tableFrom": "sync_cursors",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -277,10 +260,7 @@
         "sync_cursors_user_device": {
           "name": "sync_cursors_user_device",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id",
-            "device_id"
-          ]
+          "columns": ["user_id", "device_id"]
         }
       },
       "policies": {},
@@ -346,12 +326,8 @@
           "name": "user_preferences_user_id_users_id_fk",
           "tableFrom": "user_preferences",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -361,9 +337,7 @@
         "user_preferences_user_id_unique": {
           "name": "user_preferences_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id"
-          ]
+          "columns": ["user_id"]
         }
       },
       "policies": {},
@@ -427,9 +401,7 @@
         "users_identity_provider_id_unique": {
           "name": "users_identity_provider_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "identity_provider_id"
-          ]
+          "columns": ["identity_provider_id"]
         }
       },
       "policies": {},

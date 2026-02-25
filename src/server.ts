@@ -1,10 +1,9 @@
 import { cors } from "@elysiajs/cors";
 import { yoga } from "@elysiajs/graphql-yoga";
 import { useDisableIntrospection } from "@graphql-yoga/plugin-disable-introspection";
+import { registerSchemas } from "@omnidotdev/providers";
 import { Elysia } from "elysia";
 import { rateLimit } from "elysia-rate-limit";
-
-import { registerSchemas } from "@omnidotdev/providers";
 
 import { env, validateEnv } from "./lib/config/env";
 import { createContext } from "./lib/graphql/context";
@@ -85,8 +84,8 @@ const app = new Elysia()
     return { status: "ready", timestamp: new Date().toISOString() };
   })
   .use(
-    // biome-ignore lint/suspicious/noExplicitAny: yoga plugin schema/context type mismatch
     yoga({
+      // biome-ignore lint/suspicious/noExplicitAny: yoga plugin schema/context type mismatch
       schema: schema as any,
       context: ({ request }: { request: Request }) => createContext(request),
       graphiql: !isProd,
@@ -99,17 +98,16 @@ const app = new Elysia()
   )
   .listen(env.port);
 
-// biome-ignore lint/suspicious/noConsole: startup logging
 console.log(
   `🦊 beacon-api Elysia server running at ${app.server?.url.toString().slice(0, -1)}`,
 );
 
-// biome-ignore lint/suspicious/noConsole: startup logging
-console.log(`🧘 beacon-api GraphQL Yoga API running at ${app.server?.url}graphql`);
+console.log(
+  `🧘 beacon-api GraphQL Yoga API running at ${app.server?.url}graphql`,
+);
 
 // Graceful shutdown
 const shutdown = (signal: string) => {
-  // biome-ignore lint/suspicious/noConsole: shutdown logging
   console.log(`[Server] Received ${signal}, shutting down...`);
   app.stop();
   process.exit(0);

@@ -9,8 +9,8 @@ import {
   userPreferences,
   users,
 } from "../db";
-import type { GraphQLContext } from "./context";
 import type { Memory } from "../db/schema";
+import type { GraphQLContext } from "./context";
 
 const typeDefs = /* GraphQL */ `
   type Query {
@@ -223,9 +223,7 @@ const resolvers = {
 
       // Determine cursor from last item in page
       const cursor =
-        page.length > 0
-          ? page[page.length - 1].updatedAt.toISOString()
-          : since;
+        page.length > 0 ? page[page.length - 1].updatedAt.toISOString() : since;
 
       // Update sync cursor for this device
       const [existingCursor] = await db
@@ -366,11 +364,14 @@ const resolvers = {
                   item.accessCount ?? 0,
                   existing.accessCount,
                 ),
-                sourceSessionId: item.sourceSessionId ?? existing.sourceSessionId,
+                sourceSessionId:
+                  item.sourceSessionId ?? existing.sourceSessionId,
                 sourceChannel: item.sourceChannel ?? existing.sourceChannel,
                 originDeviceId: item.originDeviceId ?? existing.originDeviceId,
                 updatedAt: incomingUpdatedAt,
-                deletedAt: item.deletedAt ? new Date(item.deletedAt) : existing.deletedAt,
+                deletedAt: item.deletedAt
+                  ? new Date(item.deletedAt)
+                  : existing.deletedAt,
               })
               .where(eq(memories.id, existing.id));
             updated++;

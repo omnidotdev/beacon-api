@@ -12,10 +12,10 @@ export const getFlagClient = async () => {
   if (flagClient) return flagClient;
 
   flagClient = await startUnleash({
-    url: FLAGS_API_HOST!,
+    url: FLAGS_API_HOST ?? "",
     appName: "beacon-api",
     customHeaders: {
-      Authorization: FLAGS_CLIENT_KEY!,
+      Authorization: FLAGS_CLIENT_KEY ?? "",
     },
   });
 
