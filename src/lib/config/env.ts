@@ -23,6 +23,10 @@ export const env = {
   // Feature flags
   flagsApiHost: process.env.FLAGS_API_HOST,
   flagsClientKey: process.env.FLAGS_CLIENT_KEY,
+
+  // Vortex (event streaming)
+  vortexApiUrl: process.env.VORTEX_API_URL,
+  vortexApiKey: process.env.VORTEX_API_KEY,
 } as const;
 
 // Re-export for flag client compatibility

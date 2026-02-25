@@ -4,6 +4,8 @@ import { useDisableIntrospection } from "@graphql-yoga/plugin-disable-introspect
 import { Elysia } from "elysia";
 import { rateLimit } from "elysia-rate-limit";
 
+import { registerSchemas } from "@omnidotdev/providers";
+
 import { env, validateEnv } from "./lib/config/env";
 import { createContext } from "./lib/graphql/context";
 import { schema } from "./lib/graphql/schema";
@@ -13,6 +15,44 @@ const isProd = env.nodeEnv === "production";
 // Validate environment on startup
 if (isProd) {
   validateEnv();
+}
+
+// Register event schemas with Vortex
+if (env.vortexApiUrl && env.vortexApiKey) {
+  registerSchemas(env.vortexApiUrl, env.vortexApiKey, [
+    {
+      name: "beacon.conversation.started",
+      source: "omni.beacon",
+      description: "Conversation started",
+    },
+    {
+      name: "beacon.conversation.ended",
+      source: "omni.beacon",
+      description: "Conversation ended",
+    },
+    {
+      name: "beacon.tool.executed",
+      source: "omni.beacon",
+      description: "Tool executed during conversation",
+    },
+    {
+      name: "beacon.message.received",
+      source: "omni.beacon",
+      description: "Message received from user",
+    },
+    {
+      name: "beacon.message.processed",
+      source: "omni.beacon",
+      description: "Message processed by AI",
+    },
+    {
+      name: "beacon.wake_word.detected",
+      source: "omni.beacon",
+      description: "Wake word detected in voice input",
+    },
+  ]).catch((err) => {
+    console.warn("[Events] Schema registration failed:", err);
+  });
 }
 
 const app = new Elysia()
@@ -45,9 +85,10 @@ const app = new Elysia()
     return { status: "ready", timestamp: new Date().toISOString() };
   })
   .use(
+    // biome-ignore lint/suspicious/noExplicitAny: yoga plugin schema/context type mismatch
     yoga({
-      schema,
-      context: ({ request }) => createContext(request),
+      schema: schema as any,
+      context: ({ request }: { request: Request }) => createContext(request),
       graphiql: !isProd,
       landingPage: false,
       plugins: [

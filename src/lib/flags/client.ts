@@ -1,6 +1,6 @@
 import { startUnleash } from "unleash-client";
 
-import { FLAGS_API_HOST, FLAGS_CLIENT_KEY } from "lib/config/env";
+import { FLAGS_API_HOST, FLAGS_CLIENT_KEY } from "../config/env";
 
 let flagClient: Awaited<ReturnType<typeof startUnleash>> | null = null;
 
