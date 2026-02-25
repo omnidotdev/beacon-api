@@ -29,10 +29,6 @@ export const env = {
   vortexApiKey: process.env.VORTEX_API_KEY,
 } as const;
 
-// Re-export for flag client compatibility
-export const FLAGS_API_HOST = env.flagsApiHost;
-export const FLAGS_CLIENT_KEY = env.flagsClientKey;
-
 export function validateEnv() {
   const required = ["DATABASE_URL", "AUTH_SECRET", "GATEWAY_SECRET"];
   const missing = required.filter((key) => !process.env[key]);
