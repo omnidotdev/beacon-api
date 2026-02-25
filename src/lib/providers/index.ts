@@ -10,7 +10,7 @@ import {
 import { env } from "../config/env";
 
 export const events = createEventsProvider(
-  env.vortexApiUrl
+  env.vortexApiUrl && env.vortexApiKey
     ? {
         provider: "http",
         baseUrl: env.vortexApiUrl,
