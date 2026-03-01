@@ -10,6 +10,8 @@ import {
   users,
 } from "../db";
 import type { Memory } from "../db/schema";
+import { events } from "../providers";
+
 import type { GraphQLContext } from "./context";
 
 const typeDefs = /* GraphQL */ `
@@ -278,6 +280,8 @@ const resolvers = {
         .from(userPreferences)
         .where(eq(userPreferences.userId, ctx.userId));
 
+      let result;
+
       if (existing) {
         const [updated] = await db
           .update(userPreferences)
@@ -287,18 +291,27 @@ const resolvers = {
           })
           .where(eq(userPreferences.id, existing.id))
           .returning();
-        return updated;
+        result = updated;
+      } else {
+        const [created] = await db
+          .insert(userPreferences)
+          .values({
+            userId: ctx.userId,
+            ...input,
+          })
+          .returning();
+        result = created;
       }
 
-      const [created] = await db
-        .insert(userPreferences)
-        .values({
-          userId: ctx.userId,
-          ...input,
+      events
+        .emit({
+          type: "beacon.preferences.updated",
+          data: { userId: ctx.userId, ...input },
+          subject: ctx.userId,
         })
-        .returning();
+        .catch((err) => console.warn("[beacon] Event emit failed", err));
 
-      return created;
+      return result;
     },
 
     createGatewaySession: async (
@@ -411,6 +424,14 @@ const resolvers = {
         }
       }
 
+      events
+        .emit({
+          type: "beacon.memories.synced",
+          data: { userId: ctx.userId, pushed, updated, duplicates },
+          subject: ctx.userId,
+        })
+        .catch((err) => console.warn("[beacon] Event emit failed", err));
+
       return { pushed, updated, duplicates };
     },
 
@@ -441,6 +462,14 @@ const resolvers = {
           updatedAt: new Date(),
         })
         .where(eq(memories.id, existing.id));
+
+      events
+        .emit({
+          type: "beacon.memory.deleted",
+          data: { userId: ctx.userId, gatewayMemoryId },
+          subject: ctx.userId,
+        })
+        .catch((err) => console.warn("[beacon] Event emit failed", err));
 
       return true;
     },
@@ -480,6 +509,14 @@ const resolvers = {
         .set(updates)
         .where(eq(memories.id, existing.id))
         .returning();
+
+      events
+        .emit({
+          type: "beacon.memory.updated",
+          data: { userId: ctx.userId, gatewayMemoryId, pinned },
+          subject: ctx.userId,
+        })
+        .catch((err) => console.warn("[beacon] Event emit failed", err));
 
       return updated;
     },

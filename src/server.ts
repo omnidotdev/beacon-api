@@ -49,6 +49,26 @@ if (env.vortexApiUrl && env.vortexApiKey) {
       source: "omni.beacon",
       description: "Wake word detected in voice input",
     },
+    {
+      name: "beacon.preferences.updated",
+      source: "omni.beacon",
+      description: "User preferences updated",
+    },
+    {
+      name: "beacon.memories.synced",
+      source: "omni.beacon",
+      description: "Memories synced from device",
+    },
+    {
+      name: "beacon.memory.deleted",
+      source: "omni.beacon",
+      description: "Memory deleted",
+    },
+    {
+      name: "beacon.memory.updated",
+      source: "omni.beacon",
+      description: "Memory updated",
+    },
   ]).catch((err) => {
     console.warn("[Events] Schema registration failed:", err);
   });
