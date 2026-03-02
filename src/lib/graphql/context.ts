@@ -3,8 +3,13 @@ import { extractBearerToken, verifyToken } from "../auth/jwt";
 import { db, users } from "../db";
 
 export interface GraphQLContext {
-  userId: string | null;
-  identityProviderId: string | null;
+  observer: {
+    id: string;
+    email: string | null;
+    name: string | null;
+    avatarUrl: string | null;
+    identityProviderId: string;
+  } | null;
 }
 
 export async function createContext(request: Request): Promise<GraphQLContext> {
@@ -12,12 +17,12 @@ export async function createContext(request: Request): Promise<GraphQLContext> {
   const token = extractBearerToken(authHeader);
 
   if (!token) {
-    return { userId: null, identityProviderId: null };
+    return { observer: null };
   }
 
   const payload = await verifyToken(token);
   if (!payload) {
-    return { userId: null, identityProviderId: null };
+    return { observer: null };
   }
 
   // Find or create user
@@ -40,7 +45,12 @@ export async function createContext(request: Request): Promise<GraphQLContext> {
   }
 
   return {
-    userId: user.id,
-    identityProviderId: payload.sub,
+    observer: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatarUrl: user.avatarUrl ?? null,
+      identityProviderId: payload.sub,
+    },
   };
 }

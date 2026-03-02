@@ -7,20 +7,20 @@ import {
   subscriptions,
   syncCursors,
   userPreferences,
-  users,
 } from "../db";
 import type { Memory } from "../db/schema";
 import { events } from "../providers";
 
 import type { GraphQLContext } from "./context";
 
+type ObserverParent = NonNullable<GraphQLContext["observer"]>;
+
 const typeDefs = /* GraphQL */ `
   type Query {
-    me: User
-    mySubscription: Subscription
-    myPreferences: UserPreferences
-    myMemories(category: String, limit: Int): [Memory!]!
-    memoriesSince(since: String!, deviceId: String!): MemorySyncPayload!
+    """
+    The currently authenticated user. Returns null if not authenticated.
+    """
+    observer: Observer
   }
 
   type Mutation {
@@ -31,12 +31,15 @@ const typeDefs = /* GraphQL */ `
     updateMemory(gatewayMemoryId: String!, pinned: Boolean): Memory!
   }
 
-  type User {
+  type Observer {
     id: ID!
     email: String
     name: String
     avatarUrl: String
-    createdAt: String!
+    subscription: Subscription
+    preferences: UserPreferences
+    memories(category: String, limit: Int): [Memory!]!
+    memoriesSince(since: String!, deviceId: String!): MemorySyncPayload!
   }
 
   type Subscription {
@@ -142,42 +145,34 @@ type PushMemoryInput = {
 
 const resolvers = {
   Query: {
-    me: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
-      if (!ctx.userId) return null;
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, ctx.userId));
-      return user;
+    observer: (_: unknown, __: unknown, ctx: GraphQLContext) => {
+      return ctx.observer;
     },
+  },
 
-    mySubscription: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
-      if (!ctx.userId) return null;
+  Observer: {
+    subscription: async (observer: ObserverParent) => {
       const [sub] = await db
         .select()
         .from(subscriptions)
-        .where(eq(subscriptions.userId, ctx.userId));
+        .where(eq(subscriptions.userId, observer.id));
       return sub;
     },
 
-    myPreferences: async (_: unknown, __: unknown, ctx: GraphQLContext) => {
-      if (!ctx.userId) return null;
+    preferences: async (observer: ObserverParent) => {
       const [prefs] = await db
         .select()
         .from(userPreferences)
-        .where(eq(userPreferences.userId, ctx.userId));
+        .where(eq(userPreferences.userId, observer.id));
       return prefs;
     },
 
-    myMemories: async (
-      _: unknown,
+    memories: async (
+      observer: ObserverParent,
       { category, limit }: { category?: string; limit?: number },
-      ctx: GraphQLContext,
     ) => {
-      if (!ctx.userId) return [];
-
       const conditions = [
-        eq(memories.userId, ctx.userId),
+        eq(memories.userId, observer.id),
         isNull(memories.deletedAt),
       ];
 
@@ -199,12 +194,9 @@ const resolvers = {
     },
 
     memoriesSince: async (
-      _: unknown,
+      observer: ObserverParent,
       { since, deviceId }: { since: string; deviceId: string },
-      ctx: GraphQLContext,
     ) => {
-      if (!ctx.userId) throw new Error("Unauthorized");
-
       const sinceDate = new Date(since);
 
       // Fetch memories updated since the given timestamp (include tombstones)
@@ -213,7 +205,7 @@ const resolvers = {
         .from(memories)
         .where(
           and(
-            eq(memories.userId, ctx.userId),
+            eq(memories.userId, observer.id),
             gte(memories.updatedAt, sinceDate),
           ),
         )
@@ -233,7 +225,7 @@ const resolvers = {
         .from(syncCursors)
         .where(
           and(
-            eq(syncCursors.userId, ctx.userId),
+            eq(syncCursors.userId, observer.id),
             eq(syncCursors.deviceId, deviceId),
           ),
         );
@@ -245,7 +237,7 @@ const resolvers = {
           .where(eq(syncCursors.id, existingCursor.id));
       } else {
         await db.insert(syncCursors).values({
-          userId: ctx.userId,
+          userId: observer.id,
           deviceId,
         });
       }
@@ -272,13 +264,15 @@ const resolvers = {
       },
       ctx: GraphQLContext,
     ) => {
-      if (!ctx.userId) throw new Error("Unauthorized");
+      if (!ctx.observer) throw new Error("Unauthorized");
+
+      const userId = ctx.observer.id;
 
       // Upsert preferences
       const [existing] = await db
         .select()
         .from(userPreferences)
-        .where(eq(userPreferences.userId, ctx.userId));
+        .where(eq(userPreferences.userId, userId));
 
       let result;
 
@@ -296,7 +290,7 @@ const resolvers = {
         const [created] = await db
           .insert(userPreferences)
           .values({
-            userId: ctx.userId,
+            userId,
             ...input,
           })
           .returning();
@@ -306,8 +300,8 @@ const resolvers = {
       events
         .emit({
           type: "beacon.preferences.updated",
-          data: { userId: ctx.userId, ...input },
-          subject: ctx.userId,
+          data: { userId, ...input },
+          subject: userId,
         })
         .catch((err) => console.warn("[beacon] Event emit failed", err));
 
@@ -319,7 +313,7 @@ const resolvers = {
       __: unknown,
       ctx: GraphQLContext,
     ) => {
-      if (!ctx.userId) throw new Error("Unauthorized");
+      if (!ctx.observer) throw new Error("Unauthorized");
 
       // TODO: Create signed session token with user context
       // For now, return placeholder
@@ -338,8 +332,9 @@ const resolvers = {
       { input }: { input: PushMemoryInput[] },
       ctx: GraphQLContext,
     ) => {
-      if (!ctx.userId) throw new Error("Unauthorized");
+      if (!ctx.observer) throw new Error("Unauthorized");
 
+      const userId = ctx.observer.id;
       let pushed = 0;
       let updated = 0;
       let duplicates = 0;
@@ -353,7 +348,7 @@ const resolvers = {
           .from(memories)
           .where(
             and(
-              eq(memories.userId, ctx.userId),
+              eq(memories.userId, userId),
               eq(memories.contentHash, contentHash),
             ),
           );
@@ -406,7 +401,7 @@ const resolvers = {
           // Insert new memory
           await db.insert(memories).values({
             gatewayMemoryId: item.gatewayMemoryId,
-            userId: ctx.userId,
+            userId,
             category: item.category,
             content: item.content,
             contentHash,
@@ -427,8 +422,8 @@ const resolvers = {
       events
         .emit({
           type: "beacon.memories.synced",
-          data: { userId: ctx.userId, pushed, updated, duplicates },
-          subject: ctx.userId,
+          data: { userId, pushed, updated, duplicates },
+          subject: userId,
         })
         .catch((err) => console.warn("[beacon] Event emit failed", err));
 
@@ -440,14 +435,16 @@ const resolvers = {
       { gatewayMemoryId }: { gatewayMemoryId: string },
       ctx: GraphQLContext,
     ) => {
-      if (!ctx.userId) throw new Error("Unauthorized");
+      if (!ctx.observer) throw new Error("Unauthorized");
+
+      const userId = ctx.observer.id;
 
       const [existing] = await db
         .select()
         .from(memories)
         .where(
           and(
-            eq(memories.userId, ctx.userId),
+            eq(memories.userId, userId),
             eq(memories.gatewayMemoryId, gatewayMemoryId),
           ),
         );
@@ -466,8 +463,8 @@ const resolvers = {
       events
         .emit({
           type: "beacon.memory.deleted",
-          data: { userId: ctx.userId, gatewayMemoryId },
-          subject: ctx.userId,
+          data: { userId, gatewayMemoryId },
+          subject: userId,
         })
         .catch((err) => console.warn("[beacon] Event emit failed", err));
 
@@ -482,14 +479,16 @@ const resolvers = {
       }: { gatewayMemoryId: string; pinned?: boolean },
       ctx: GraphQLContext,
     ) => {
-      if (!ctx.userId) throw new Error("Unauthorized");
+      if (!ctx.observer) throw new Error("Unauthorized");
+
+      const userId = ctx.observer.id;
 
       const [existing] = await db
         .select()
         .from(memories)
         .where(
           and(
-            eq(memories.userId, ctx.userId),
+            eq(memories.userId, userId),
             eq(memories.gatewayMemoryId, gatewayMemoryId),
           ),
         );
@@ -513,17 +512,13 @@ const resolvers = {
       events
         .emit({
           type: "beacon.memory.updated",
-          data: { userId: ctx.userId, gatewayMemoryId, pinned },
-          subject: ctx.userId,
+          data: { userId, gatewayMemoryId, pinned },
+          subject: userId,
         })
         .catch((err) => console.warn("[beacon] Event emit failed", err));
 
       return updated;
     },
-  },
-
-  User: {
-    createdAt: (user: { createdAt: Date }) => user.createdAt?.toISOString(),
   },
 
   Subscription: {
