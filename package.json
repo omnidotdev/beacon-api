@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --watch src/server.ts",
-    "build": "bun build --target node --outdir build src/server.ts",
+    "build": "bun build --target node --outdir build --external @iggy.rs/sdk --external resend --external @aws-sdk/client-s3 --external @aws-sdk/s3-request-presigner src/server.ts",
     "start": "bun drizzle-kit migrate --config src/lib/config/drizzle.config.ts && bun run build/server.js",
     "lint": "biome lint",
     "format": "biome format --write",
