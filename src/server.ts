@@ -1,7 +1,7 @@
 import { cors } from "@elysiajs/cors";
 import { yoga } from "@elysiajs/graphql-yoga";
 import { useDisableIntrospection } from "@graphql-yoga/plugin-disable-introspection";
-import { registerSchemas } from "@omnidotdev/providers";
+import { registerSchemas } from "@omnidotdev/providers/events";
 import { Elysia } from "elysia";
 import { rateLimit } from "elysia-rate-limit";
 

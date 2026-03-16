@@ -2,10 +2,8 @@
  * Shared provider instances for Beacon.
  */
 
-import {
-  createEventsProvider,
-  createFlagProvider,
-} from "@omnidotdev/providers";
+import { createEventsProvider } from "@omnidotdev/providers/events";
+import { createFlagProvider } from "@omnidotdev/providers/flags";
 
 import { env } from "../config/env";
 
