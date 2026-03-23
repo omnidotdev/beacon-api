@@ -10,11 +10,17 @@ RUN bun install --frozen-lockfile
 COPY . .
 RUN bun run build
 
+# Production dependencies
+FROM base AS deps
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile --production
+
 # Run
 FROM base AS runner
 ENV NODE_ENV=production
+USER bun
 
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/src ./src
