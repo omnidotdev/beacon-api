@@ -5,7 +5,10 @@ import type { KnipConfig } from "knip";
  * @see https://knip.dev/overview/configuration
  */
 const knipConfig: KnipConfig = {
-  project: ["src/**/*.ts", "src/**/*.tsx"],
+  entry: ["src/server.ts", "src/scripts/**/*.ts"],
+  project: ["src/**/*.ts"],
+  ignore: ["src/lib/config/drizzle.config.ts"],
+  ignoreDependencies: ["drizzle-kit"],
 };
 
 export default knipConfig;

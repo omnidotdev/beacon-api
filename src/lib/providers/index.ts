@@ -18,6 +18,7 @@ export const events = createEventsProvider(
     : {},
 );
 
+/** @knipignore */
 export const flags = createFlagProvider(
   env.flagsApiHost
     ? {

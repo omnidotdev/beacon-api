@@ -4,6 +4,7 @@ import { env } from "../config/env";
 // JWKS for verifying tokens from HIDRA
 const jwks = createRemoteJWKSet(new URL(`${env.authBaseUrl}/jwks`));
 
+/** @knipignore */
 export interface TokenPayload {
   sub: string; // User identity provider ID
   email?: string;
