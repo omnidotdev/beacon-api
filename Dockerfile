@@ -6,14 +6,14 @@ WORKDIR /app
 # Build
 FROM base AS builder
 COPY package.json bun.lock ./
-RUN bun install
+RUN bun install --frozen-lockfile
 COPY . .
 RUN bun run build
 
 # Production dependencies
 FROM base AS deps
 COPY package.json bun.lock ./
-RUN bun install --production
+RUN bun install --frozen-lockfile --production
 
 # Run
 FROM base AS runner
