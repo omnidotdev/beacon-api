@@ -13,7 +13,7 @@ RUN bun run build
 # Production dependencies
 FROM base AS deps
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
+RUN bun install --frozen-lockfile --production --ignore-scripts
 
 # Run
 FROM base AS runner
