@@ -8,6 +8,8 @@ FROM base AS builder
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 COPY . .
+ARG GIT_SHA
+RUN echo "$GIT_SHA" > /app/.git-sha
 RUN bun run build
 
 # Production dependencies
@@ -24,6 +26,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/src ./src
+COPY --from=builder /app/.git-sha ./.git-sha
 
 EXPOSE 4000
 CMD ["bun", "run", "start"]
