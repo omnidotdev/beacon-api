@@ -10,7 +10,13 @@ import { env, validateEnv } from "./lib/config/env";
 import { createContext } from "./lib/graphql/context";
 import { schema } from "./lib/graphql/schema";
 
-const commit = (() => { try { return readFileSync("/app/.git-sha", "utf-8").trim(); } catch { return "unknown"; } })();
+const commit = (() => {
+  try {
+    return readFileSync("/app/.git-sha", "utf-8").trim();
+  } catch {
+    return "unknown";
+  }
+})();
 
 const isProd = env.nodeEnv === "production";
 
@@ -101,7 +107,11 @@ const app = new Elysia()
       duration: 60_000,
     }),
   )
-  .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString(), commit }))
+  .get("/health", () => ({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    commit,
+  }))
   .get("/ready", async () => {
     // TODO: Check database connection
     return { status: "ready", timestamp: new Date().toISOString() };
