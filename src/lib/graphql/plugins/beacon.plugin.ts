@@ -49,13 +49,13 @@ const BeaconPlugin = extendSchema({
       email: String
       name: String
       avatarUrl: String
-      subscription: Subscription
+      subscription: BillingSubscription
       preferences: UserPreferences
       memories(category: String, limit: Int): [Memory!]!
       memoriesSince(since: String!, deviceId: String!): MemorySyncPayload!
     }
 
-    type Subscription {
+    type BillingSubscription {
       id: ID!
       plan: Plan!
       status: SubscriptionStatus!
@@ -290,7 +290,7 @@ const BeaconPlugin = extendSchema({
         ),
     },
 
-    Subscription: {
+    BillingSubscription: {
       plan: ($sub: Step<{ plan: string }>) =>
         lambda($sub, (sub) => sub.plan.toUpperCase()),
       status: ($sub: Step<{ status: string }>) =>

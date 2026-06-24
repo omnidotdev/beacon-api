@@ -1,0 +1,154 @@
+"""
+The root query type which gives access points into the data universe.
+"""
+type Query implements Node {
+  """
+  Exposes the root query type nested one level down. This is helpful for Relay 1
+  which can only query top level fields if they are in a particular form.
+  """
+  query: Query!
+
+  """
+  The root query type must be a `Node` to work well with Relay 1 mutations. This just resolves to `query`.
+  """
+  id: ID!
+
+  """
+  Fetches an object given its globally unique `ID`.
+  """
+  node(
+    """
+    The globally unique `ID`.
+    """
+    id: ID!
+  ): Node
+
+  """
+  The currently authenticated user. Returns null if not authenticated.
+  """
+  observer: Observer
+}
+
+"""
+An object with a globally unique `ID`.
+"""
+interface Node {
+  """
+  A globally unique identifier. Can be used in various places throughout the system to identify this single value.
+  """
+  id: ID!
+}
+
+"""
+The root mutation type which contains root level fields which mutate data.
+"""
+type Mutation {
+  updatePreferences(
+    """
+    The exclusive input argument for this mutation. An object type, make sure to see documentation for this object’s fields.
+    """
+    input: UpdatePreferencesInput!
+  ): UserPreferences!
+  createGatewaySession: GatewaySession!
+  pushMemories(
+    """
+    The exclusive input argument for this mutation. An object type, make sure to see documentation for this object’s fields.
+    """
+    input: [PushMemoryInput!]!
+  ): PushMemoriesResult!
+  deleteMemory(gatewayMemoryId: String!): Boolean!
+  updateMemory(gatewayMemoryId: String!, pinned: Boolean): Memory!
+}
+
+type Observer {
+  id: ID!
+  email: String
+  name: String
+  avatarUrl: String
+  subscription: BillingSubscription
+  preferences: UserPreferences
+  memories(category: String, limit: Int): [Memory!]!
+  memoriesSince(since: String!, deviceId: String!): MemorySyncPayload!
+}
+
+type BillingSubscription {
+  id: ID!
+  plan: Plan!
+  status: SubscriptionStatus!
+  creditsRemaining: Int
+}
+
+enum Plan {
+  FREE
+  PRO
+  TEAM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+}
+
+type UserPreferences {
+  id: ID!
+  defaultPersona: String!
+  theme: String!
+  voiceEnabled: Boolean!
+}
+
+input UpdatePreferencesInput {
+  defaultPersona: String
+  theme: String
+  voiceEnabled: Boolean
+}
+
+type GatewaySession {
+  sessionId: String!
+  websocketUrl: String!
+  expiresAt: String!
+}
+
+type Memory {
+  id: ID!
+  gatewayMemoryId: String!
+  category: String!
+  content: String!
+  contentHash: String!
+  tags: String!
+  pinned: Boolean!
+  accessCount: Int!
+  sourceSessionId: String
+  sourceChannel: String
+  originDeviceId: String
+  createdAt: String!
+  updatedAt: String!
+  deletedAt: String
+}
+
+type MemorySyncPayload {
+  memories: [Memory!]!
+  cursor: String!
+  hasMore: Boolean!
+}
+
+input PushMemoryInput {
+  gatewayMemoryId: String!
+  category: String!
+  content: String!
+  tags: String
+  pinned: Boolean
+  accessCount: Int
+  sourceSessionId: String
+  sourceChannel: String
+  originDeviceId: String
+  createdAt: String!
+  updatedAt: String!
+  deletedAt: String
+}
+
+type PushMemoriesResult {
+  pushed: Int!
+  updated: Int!
+  duplicates: Int!
+}

@@ -13,11 +13,13 @@ const OmitTablesPlugin = makeJSONPgSmartTagsPlugin({
   version: 1,
   config: {
     class: {
-      users: { tags: { omit: true } },
-      subscriptions: { tags: { omit: true } },
-      user_preferences: { tags: { omit: true } },
-      memories: { tags: { omit: true } },
-      sync_cursors: { tags: { omit: true } },
+      // `-*` removes all behaviors so no type/operations are generated for the
+      // table (v5; `omit: true` only drops operations, not the type itself)
+      users: { tags: { behavior: "-*" } },
+      subscriptions: { tags: { behavior: "-*" } },
+      user_preferences: { tags: { behavior: "-*" } },
+      memories: { tags: { behavior: "-*" } },
+      sync_cursors: { tags: { behavior: "-*" } },
     },
   },
 });
