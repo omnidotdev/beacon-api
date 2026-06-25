@@ -5,12 +5,24 @@ import { useDisableIntrospection } from "@graphql-yoga/plugin-disable-introspect
 import { registerSchemas } from "@omnidotdev/providers/events";
 import { Elysia } from "elysia";
 import { rateLimit } from "elysia-rate-limit";
+import { useGrafast } from "grafast/envelop";
+import { makeSchema } from "postgraphile";
 
 import { env, validateEnv } from "./lib/config/env";
+import graphilePreset from "./lib/config/graphile.config";
 import { createContext } from "./lib/graphql/context";
-import { schema } from "./lib/graphql/schema";
 
-const commit = (() => { try { return readFileSync("/app/.git-sha", "utf-8").trim(); } catch { return "unknown"; } })();
+// Build the GraphQL schema database-first from Postgres at boot (custom plans
+// in BeaconPlugin close over runtime singletons, so makeSchema, not export)
+const { schema } = await makeSchema(graphilePreset);
+
+const commit = (() => {
+  try {
+    return readFileSync("/app/.git-sha", "utf-8").trim();
+  } catch {
+    return "unknown";
+  }
+})();
 
 const isProd = env.nodeEnv === "production";
 
@@ -101,7 +113,11 @@ const app = new Elysia()
       duration: 60_000,
     }),
   )
-  .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString(), commit }))
+  .get("/health", () => ({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    commit,
+  }))
   .get("/ready", async () => {
     // TODO: Check database connection
     return { status: "ready", timestamp: new Date().toISOString() };
@@ -116,6 +132,8 @@ const app = new Elysia()
       plugins: [
         // Disable GraphQL introspection in production
         isProd && useDisableIntrospection(),
+        // Grafast execution for the Postgraphile-built schema
+        useGrafast(),
       ],
     }),
   )

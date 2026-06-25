@@ -15,21 +15,26 @@
     "db:migrate": "bun --env-file .env.local drizzle-kit migrate --config src/lib/config/drizzle.config.ts",
     "db:push": "bun --env-file .env.local drizzle-kit push --config src/lib/config/drizzle.config.ts",
     "db:studio": "bun --env-file .env.local drizzle-kit studio --config src/lib/config/drizzle.config.ts",
+    "graphql:generate": "GRAPHILE_ENV=development bun run --env-file .env.local src/scripts/generateGraphqlSchema.ts",
     "prepare": "husky",
     "knip": "knip-bun"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.4.1",
     "@elysiajs/graphql-yoga": "^1.4.0",
+    "@graphile/simplify-inflection": "^8.0.0",
     "@graphql-yoga/plugin-disable-introspection": "^2.19.0",
     "@omnidotdev/providers": "github:omnidotdev/providers#49f2fc4",
     "drizzle-orm": "^0.45.1",
     "elysia": "^1.4.21",
     "elysia-rate-limit": "^4.5.0",
+    "grafast": "^1.0.2",
     "graphql": "^16.12.0",
     "graphql-yoga": "^5.18.0",
     "jose": "^6.1.3",
     "pg": "^8.16.3",
+    "postgraphile": "^5.0.3",
+    "postgraphile-plugin-connection-filter": "^3.0.1",
     "unleash-client": "^6.9.6"
   },
   "devDependencies": {
