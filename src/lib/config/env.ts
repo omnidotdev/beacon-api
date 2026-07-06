@@ -10,8 +10,6 @@ const {
   GATEWAY_SECRET,
   BILLING_API_URL,
   BILLING_API_KEY,
-  FLAGS_API_HOST,
-  FLAGS_CLIENT_KEY,
   VORTEX_API_URL,
   VORTEX_API_KEY,
 } = process.env;
@@ -35,10 +33,6 @@ export const env = {
   // Billing
   billingApiUrl: BILLING_API_URL,
   billingApiKey: BILLING_API_KEY,
-
-  // Feature flags
-  flagsApiHost: FLAGS_API_HOST,
-  flagsClientKey: FLAGS_CLIENT_KEY,
 
   // Vortex (event streaming)
   vortexApiUrl: VORTEX_API_URL,
