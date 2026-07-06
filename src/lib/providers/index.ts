@@ -3,7 +3,6 @@
  */
 
 import { createEventsProvider } from "@omnidotdev/providers/events";
-import { createFlagProvider } from "@omnidotdev/providers/flags";
 
 import { env } from "../config/env";
 
@@ -14,18 +13,6 @@ export const events = createEventsProvider(
         baseUrl: env.vortexApiUrl,
         apiKey: env.vortexApiKey,
         source: "omni.beacon",
-      }
-    : {},
-);
-
-/** @knipignore */
-export const flags = createFlagProvider(
-  env.flagsApiHost
-    ? {
-        provider: "unleash",
-        url: env.flagsApiHost,
-        apiKey: env.flagsClientKey!,
-        appName: "beacon-api",
       }
     : {},
 );
