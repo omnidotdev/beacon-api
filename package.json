@@ -24,7 +24,7 @@
     "@elysiajs/graphql-yoga": "^1.4.0",
     "@graphile/simplify-inflection": "^8.0.0",
     "@graphql-yoga/plugin-disable-introspection": "^2.19.0",
-    "@omnidotdev/providers": "github:omnidotdev/providers#49f2fc4",
+    "@omnidotdev/providers": "github:omnidotdev/providers#5dc315939682ad5a01666c0e6df9336fa202982a",
     "drizzle-orm": "^0.45.1",
     "elysia": "^1.4.21",
     "elysia-rate-limit": "^4.5.0",
