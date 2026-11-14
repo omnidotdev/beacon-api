@@ -3,13 +3,7 @@ import type { FieldArgs, Step } from "postgraphile/grafast";
 import { context, lambda, object } from "postgraphile/grafast";
 import { extendSchema, gql } from "postgraphile/utils";
 import { computeContentHash } from "../../crypto/hash";
-import {
-  type Memory,
-  memories,
-  subscriptions,
-  syncCursors,
-  userPreferences,
-} from "../../db";
+import { type Memory, memories, syncCursors, userPreferences } from "../../db";
 import { events } from "../../providers";
 import type { Observer } from "../context";
 
@@ -49,29 +43,9 @@ const BeaconPlugin = extendSchema({
       email: String
       name: String
       avatarUrl: String
-      subscription: BillingSubscription
       preferences: UserPreferences
       memories(category: String, limit: Int): [Memory!]!
       memoriesSince(since: String!, deviceId: String!): MemorySyncPayload!
-    }
-
-    type BillingSubscription {
-      id: ID!
-      plan: Plan!
-      status: SubscriptionStatus!
-      creditsRemaining: Int
-    }
-
-    enum Plan {
-      FREE
-      PRO
-      TEAM
-    }
-
-    enum SubscriptionStatus {
-      ACTIVE
-      CANCELED
-      PAST_DUE
     }
 
     type UserPreferences {
@@ -158,19 +132,6 @@ const BeaconPlugin = extendSchema({
     },
 
     Observer: {
-      subscription: ($observer: Step<Observer | null>) =>
-        lambda(
-          object({ observer: $observer, db: context().get("db") }),
-          async ({ observer, db }: { observer: Observer | null; db: Db }) => {
-            if (!observer) return null;
-            const [sub] = await db
-              .select()
-              .from(subscriptions)
-              .where(eq(subscriptions.userId, observer.id));
-            return sub ?? null;
-          },
-        ),
-
       preferences: ($observer: Step<Observer | null>) =>
         lambda(
           object({ observer: $observer, db: context().get("db") }),
@@ -288,13 +249,6 @@ const BeaconPlugin = extendSchema({
             return { memories: page, cursor, hasMore };
           },
         ),
-    },
-
-    BillingSubscription: {
-      plan: ($sub: Step<{ plan: string }>) =>
-        lambda($sub, (sub) => sub.plan.toUpperCase()),
-      status: ($sub: Step<{ status: string }>) =>
-        lambda($sub, (sub) => sub.status.toUpperCase().replace("-", "_")),
     },
 
     Memory: {

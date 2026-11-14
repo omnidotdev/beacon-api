@@ -65,29 +65,9 @@ type Observer {
   email: String
   name: String
   avatarUrl: String
-  subscription: BillingSubscription
   preferences: UserPreferences
   memories(category: String, limit: Int): [Memory!]!
   memoriesSince(since: String!, deviceId: String!): MemorySyncPayload!
-}
-
-type BillingSubscription {
-  id: ID!
-  plan: Plan!
-  status: SubscriptionStatus!
-  creditsRemaining: Int
-}
-
-enum Plan {
-  FREE
-  PRO
-  TEAM
-}
-
-enum SubscriptionStatus {
-  ACTIVE
-  CANCELED
-  PAST_DUE
 }
 
 type UserPreferences {
