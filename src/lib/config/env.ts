@@ -8,8 +8,6 @@ const {
   AUTH_SECRET,
   GATEWAY_URL,
   GATEWAY_SECRET,
-  BILLING_API_URL,
-  BILLING_API_KEY,
   FLAGS_API_HOST,
   FLAGS_CLIENT_KEY,
   VORTEX_API_URL,
@@ -31,10 +29,6 @@ export const env = {
   // Gateway
   gatewayUrl: GATEWAY_URL || "http://localhost:18790",
   gatewaySecret: GATEWAY_SECRET ?? "",
-
-  // Billing
-  billingApiUrl: BILLING_API_URL,
-  billingApiKey: BILLING_API_KEY,
 
   // Feature flags
   flagsApiHost: FLAGS_API_HOST,

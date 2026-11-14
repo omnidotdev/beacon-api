@@ -18,19 +18,6 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
-export const subscriptions = pgTable("subscriptions", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id")
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  aetherSubscriptionId: text("aether_subscription_id").unique(),
-  plan: text("plan").notNull().default("free"), // 'free', 'pro', 'team'
-  status: text("status").notNull().default("active"), // 'active', 'canceled', 'past_due'
-  creditsRemaining: integer("credits_remaining").default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-});
-
 export const userPreferences = pgTable("user_preferences", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
@@ -97,7 +84,6 @@ export const syncCursors = pgTable(
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
-export type Subscription = typeof subscriptions.$inferSelect;
 export type UserPreference = typeof userPreferences.$inferSelect;
 export type Memory = typeof memories.$inferSelect;
 export type NewMemory = typeof memories.$inferInsert;

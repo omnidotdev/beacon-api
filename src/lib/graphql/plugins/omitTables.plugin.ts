@@ -16,7 +16,6 @@ const OmitTablesPlugin = makeJSONPgSmartTagsPlugin({
       // `-*` removes all behaviors so no type/operations are generated for the
       // table (v5; `omit: true` only drops operations, not the type itself)
       users: { tags: { behavior: "-*" } },
-      subscriptions: { tags: { behavior: "-*" } },
       user_preferences: { tags: { behavior: "-*" } },
       memories: { tags: { behavior: "-*" } },
       sync_cursors: { tags: { behavior: "-*" } },

@@ -43,6 +43,10 @@ bun db:migrate    # Apply migrations
 bun db:studio     # Open Drizzle Studio
 ```
 
+## Billing
+
+Beacon API keeps no billing state. AI usage is metered and charged by the Synapse gateway against the user's Omni credit balance (one pool shared across Omni products, held in Aether); plans and entitlements live in Aether. Do not add a local credit ledger, markup, or price table here (`src/lib/billing/noLocalCreditLedger.test.ts` guards this).
+
 ## License
 
 The code in this repository is licensed under Apache 2.0, &copy; [Omni LLC](https://omni.dev). See [LICENSE.md](LICENSE.md) for more information.
