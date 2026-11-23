@@ -5,6 +5,7 @@ const {
   PORT,
   DATABASE_URL,
   AUTH_BASE_URL,
+  AUTH_AUDIENCE,
   AUTH_SECRET,
   GATEWAY_URL,
   GATEWAY_SECRET,
@@ -24,6 +25,9 @@ export const env = {
 
   // Auth
   authBaseUrl: AUTH_BASE_URL || "https://identity.omni.dev",
+  // Audience Gatekeeper mints into Beacon's access tokens (the beacon-app
+  // OAuth client's RFC 8707 resource)
+  authAudience: AUTH_AUDIENCE || "https://gateway.beacon.omni.dev",
   authSecret: AUTH_SECRET ?? "",
 
   // Gateway
