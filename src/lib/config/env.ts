@@ -9,8 +9,6 @@ const {
   AUTH_SECRET,
   GATEWAY_URL,
   GATEWAY_SECRET,
-  FLAGS_API_HOST,
-  FLAGS_CLIENT_KEY,
   VORTEX_API_URL,
   VORTEX_API_KEY,
 } = process.env;
@@ -33,10 +31,6 @@ export const env = {
   // Gateway
   gatewayUrl: GATEWAY_URL || "http://localhost:18790",
   gatewaySecret: GATEWAY_SECRET ?? "",
-
-  // Feature flags
-  flagsApiHost: FLAGS_API_HOST,
-  flagsClientKey: FLAGS_CLIENT_KEY,
 
   // Vortex (event streaming)
   vortexApiUrl: VORTEX_API_URL,
